@@ -1,3 +1,4 @@
+
 #root {
   min-height: 100vh;
 }
@@ -147,14 +148,38 @@
 }
 
 .camera-preview {
+  position: relative;
   min-height: 280px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border: 1px dashed #d4d6e4;
   border-radius: 12px;
   background: #f8f9fc;
   text-align: center;
   padding: 24px;
+}
+
+.camera-video {
+  display: none;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  background: #111;
+}
+
+.camera-video.visible {
+  display: block;
+}
+
+.camera-preview:has(.camera-video.visible) {
+  padding: 0;
+  background: #111;
+  border-style: solid;
+}
+
+.camera-placeholder {
+  padding: 12px;
 }
 
 .camera-icon {
@@ -178,10 +203,31 @@
 
 .camera-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-top: 16px;
   color: #858a99;
   font-size: 12px;
+}
+
+.secondary-button {
+  padding: 9px 14px;
+  border: 1px solid #dedff0;
+  border-radius: 8px;
+  background: white;
+  color: #4548bd;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  background: #f2f2ff;
+}
+
+.secondary-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .session-card {
