@@ -1,4 +1,5 @@
 const { app, BrowserWindow } = require('electron');
+require('./index.css');
 
 function createWindow() {
   const win = new BrowserWindow({
