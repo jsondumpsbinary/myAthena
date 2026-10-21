@@ -7,21 +7,7 @@ function createWindow() {
     title: 'myAthena',
   });
 
-  win.loadURL(
-    'data:text/html;charset=utf-8,' +
-      encodeURIComponent(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>myAthena</title>
-          </head>
-          <body>
-            <h1>Welcome to myAthena!</h1>
-            <p>My first Electron window is working.</p>
-          </body>
-        </html>
-      `)
-  );
+  win.loadURL('http://127.0.0.1:5173');
 }
 
 app.whenReady().then(() => {
