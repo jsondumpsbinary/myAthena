@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
 function App() {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const [cameraStatus, setCameraStatus] = useState('idle');
+  const [cameraError, setCameraError] = useState('');
+  const [capturedPhoto, setCapturedPhoto] = useState('');
+  const [captureError, setCaptureError] = useState('');
   const [sessionActive, setSessionActive] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
+  const [saveStatus, setSaveStatus] = useState('');
   useEffect(() => {
     if (!sessionActive) return;
 
@@ -15,12 +22,114 @@ function App() {
     return () => clearInterval(intervalId);
   }, [sessionActive]);
 
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  async function startCamera() {
+    setCameraError('');
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraStatus('error');
+      setCameraError('Camera access is unavailable in this environment.');
+      return;
+    }
+
+    try {
+      setCameraStatus('loading');
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: 'user',
+        },
+      });
+
+      streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      setCameraStatus('active');
+    } catch (error) {
+      setCameraStatus('error');
+      setCameraError(
+        error.name === 'NotAllowedError'
+          ? 'Camera permission was denied. Allow camera access in macOS settings and try again.'
+          : error.name === 'NotFoundError'
+            ? 'No camera was found.'
+            : `Could not start the camera: ${error.message}`
+      );
+    }
+  }
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setCameraStatus('idle');
+    setCameraError('');
+  }
+
+  function capturePhoto() {
+  const video = videoRef.current;
+
+  if (!video || video.readyState < 2 || !video.videoWidth) {
+    setCaptureError('Wait for the live camera preview to be ready.');
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    setCaptureError('Could not prepare the photo capture canvas.');
+    return;
+  }
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.92));
+  setCaptureError('');
+}
+
+
+  function toggleSession() {
+    setSessionActive((active) => !active);
+  }
+
   const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
   const seconds = String(elapsedSeconds % 60).padStart(2, '0');
 
-  function handleSessionToggle() {
-    setSessionActive((active) => !active);
+  async function saveCapturedPhoto() {
+  if (!capturedPhoto) return;
+
+  if (!window.electronAPI?.savePhoto) {
+    setSaveStatus('Electron photo-saving API is unavailable.');
+    return;
   }
+
+  try {
+    setSaveStatus('Saving photo...');
+
+    const result = await window.electronAPI.savePhoto(capturedPhoto);
+
+    setSaveStatus(`Saved successfully: ${result.filename}`);
+  } catch (error) {
+    setSaveStatus(`Could not save photo: ${error.message}`);
+  }
+}
 
   return (
     <div className="app-shell">
@@ -44,7 +153,7 @@ function App() {
           <p className="eyebrow">WORKSPACE</p>
           <h2>Your testing space</h2>
           <p className="subtitle">
-            Start a session and prepare your camera workspace.
+            Start your camera and prepare your workspace.
           </p>
         </section>
 
@@ -52,25 +161,105 @@ function App() {
           <div className="card-heading">
             <div>
               <h3>Camera preview</h3>
-              <p>Your live camera feed will appear here.</p>
+              <p>Connect your camera to view the live feed.</p>
             </div>
-            <span className="preview-badge">PREVIEW</span>
+            <span className="preview-badge">
+              {cameraStatus === 'active' ? 'LIVE' : 'CAMERA'}
+            </span>
           </div>
 
           <div className="camera-preview">
-            <div className="camera-placeholder">
-              <div className="camera-icon">◎</div>
-              <h3>Camera not connected</h3>
-              <p>
-                Camera access will be added in our next implementation phase.
-              </p>
-            </div>
+            <video
+              ref={videoRef}
+              className={`camera-video ${cameraStatus === 'active' ? 'visible' : ''}`}
+              autoPlay
+              muted
+              playsInline
+            />
+
+            {cameraStatus !== 'active' && (
+              <div className="camera-placeholder">
+                <div className="camera-icon">◎</div>
+                <h3>
+                  {cameraStatus === 'loading'
+                    ? 'Connecting to camera…'
+                    : cameraStatus === 'error'
+                      ? 'Camera unavailable'
+                      : 'Camera not connected'}
+                </h3>
+                <p>
+                  {cameraError ||
+                    'Select Start camera to request access to your camera.'}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="camera-footer">
-            <span>Camera integration pending</span>
-            <span className="footer-indicator">●</span>
+            <span>
+              {cameraStatus === 'active'
+                ? 'Camera connected'
+                : 'Camera preview status'}
+            </span>
+
+            <button
+              className="secondary-button"
+              onClick={cameraStatus === 'active' ? stopCamera : startCamera}
+              disabled={cameraStatus === 'loading'}
+            >
+              {cameraStatus === 'active' ? 'Stop camera' : 'Start camera'}
+            </button>
           </div>
+                <div className="capture-section">
+  <button
+    className="session-button"
+    onClick={capturePhoto}
+    disabled={cameraStatus !== 'active'}
+  >
+    Capture photo
+  </button>
+
+  {captureError && (
+    <p className="capture-error">{captureError}</p>
+  )}
+
+  {capturedPhoto && (
+  <div className="captured-photo">
+    <h3>Captured photo</h3>
+
+    <img src={capturedPhoto} alt="Captured camera snapshot" />
+
+    <a
+      href={capturedPhoto}
+      download={`myathena-photo-${Date.now()}.jpg`}
+      className="download-link"
+    >
+      Download photo
+    </a>
+
+    <button
+      className="secondary-button"
+      onClick={saveCapturedPhoto}
+    >
+      Save to myAthena folder
+    </button>
+
+    {saveStatus && <p>{saveStatus}</p>}
+
+    <button
+      className="secondary-button"
+      onClick={() => {
+        setCapturedPhoto('');
+        setSaveStatus('');
+        setCaptureError('');
+      }}
+    >
+      Clear photo
+    </button>
+  </div>
+)}
+</div>
+          
         </section>
 
         <section className="session-card">
@@ -86,7 +275,7 @@ function App() {
 
           <button
             className={`session-button ${sessionActive ? 'stop-button' : ''}`}
-            onClick={handleSessionToggle}
+            onClick={toggleSession}
           >
             {sessionActive ? 'End session' : 'Start session'}
           </button>
