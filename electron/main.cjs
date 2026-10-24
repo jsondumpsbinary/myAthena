@@ -21,15 +21,20 @@ function createWindow() {
 ipcMain.handle('save-photo', async (event, imageData) => {
   if (
     typeof imageData !== 'string' ||
-    !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(imageData)
+    !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData)
   ) {
     throw new Error('Invalid JPEG image data.');
   }
 
-  const base64Data = imageData.replace(/^data:image\/jpeg;base64,/, '');
+  const base64Data = imageData.replace(
+    /^data:image\/jpeg;base64,/,
+    ''
+  );
+
   const photoBuffer = Buffer.from(base64Data, 'base64');
 
-  const photosDirectory = path.join(app.getPath('pictures'), 'myAthena');
+  const photosDirectory = path.join(app.getAppPath(), 'photos');
+
   await fs.mkdir(photosDirectory, { recursive: true });
 
   const filename = `myathena-${Date.now()}.jpg`;
