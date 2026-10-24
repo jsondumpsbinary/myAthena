@@ -9,7 +9,6 @@ function App() {
 
   const [cameraStatus, setCameraStatus] = useState('idle');
   const [cameraError, setCameraError] = useState('');
-  const [capturedPhoto, setCapturedPhoto] = useState('');
   const [captureError, setCaptureError] = useState('');
   const [sessionActive, setSessionActive] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -127,29 +126,6 @@ function App() {
     return canvas.toDataURL('image/jpeg', 0.92);
   }
 
-  // Capture a photo manually
-  function capturePhoto() {
-    const imageData = captureCurrentFrame();
-
-    if (imageData) {
-      setCapturedPhoto(imageData);
-    }
-  }
-
-  // Save the manually captured photo
-  async function saveCapturedPhoto() {
-    if (!capturedPhoto) return;
-
-    try {
-      setSaveStatus('Saving photo...');
-
-      const result = await window.electronAPI.savePhoto(capturedPhoto);
-
-      setSaveStatus(`Saved successfully: ${result.filename}`);
-    } catch (error) {
-      setSaveStatus(`Could not save photo: ${error.message}`);
-    }
-  }
 
   // Start and end session
   function startSession() {
@@ -244,70 +220,21 @@ const seconds = String(
           </div>
 
           <div className="camera-footer">
-            <span>
-              {cameraStatus === 'active'
-                ? 'Camera connected'
-                : 'Camera preview status'}
-            </span>
+              <span>
+                {cameraStatus === 'active'
+                  ? 'Camera connected'
+                  : 'Camera preview status'}
+              </span>
 
-            <button
-              className="secondary-button"
-              onClick={cameraStatus === 'active' ? stopCamera : startCamera}
-              disabled={cameraStatus === 'loading'}
-            >
-              {cameraStatus === 'active' ? 'Stop camera' : 'Start camera'}
-            </button>
+              <button
+                className="secondary-button"
+                onClick={cameraStatus === 'active' ? stopCamera : startCamera}
+                disabled={cameraStatus === 'loading'}
+              >
+                {cameraStatus === 'active' ? 'Stop camera' : 'Start camera'}
+              </button>
           </div>
 
-          <div className="capture-section">
-            <button
-              className="session-button"
-              onClick={capturePhoto}
-              disabled={cameraStatus !== 'active'}
-            >
-              Capture photo
-            </button>
-
-            {captureError && (
-              <p className="capture-error">{captureError}</p>
-            )}
-
-            {capturedPhoto && (
-              <div className="captured-photo">
-                <h3>Captured photo</h3>
-
-                <img src={capturedPhoto} alt="Captured camera snapshot" />
-
-                <a
-                  href={capturedPhoto}
-                  download={`myathena-photo-${Date.now()}.jpg`}
-                  className="download-link"
-                >
-                  Download photo
-                </a>
-
-                <button
-                  className="secondary-button"
-                  onClick={saveCapturedPhoto}
-                >
-                  Save to myAthena folder
-                </button>
-
-                {saveStatus && <p>{saveStatus}</p>}
-
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    setCapturedPhoto('');
-                    setSaveStatus('');
-                    setCaptureError('');
-                  }}
-                >
-                  Clear photo
-                </button>
-              </div>
-            )}
-          </div>
         </section>
 
         <section className="session-card">
@@ -316,9 +243,9 @@ const seconds = String(
             <div className="timer">
               {hours}:{minutes}:{seconds}
             </div>
-            <p className="timer-description">
+            {/* <p className="timer-description">
               {sessionActive ? 'Session in progress' : 'Time elapsed'}
-            </p>
+            </p> */}
           </div>
 
           <button
@@ -330,6 +257,7 @@ const seconds = String(
           >
             {sessionActive ? 'End session' : 'Start session'}
           </button>
+          {saveStatus && <p>{saveStatus}</p>}
         </section>
 
         <footer className="app-footer">
