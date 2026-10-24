@@ -22,6 +22,23 @@ function App() {
     return () => clearInterval(intervalId);
   }, [sessionActive]);
 
+
+  useEffect(() => {
+  if (!sessionActive) return;
+
+  if (cameraStatus !== 'active') {
+    setSaveStatus('Start the camera before beginning automatic capture.');
+    setSessionActive(false);
+    return;
+  }
+
+  const captureInterval = setInterval(() => {
+    void captureAndSavePhoto();
+  }, 10_000);
+
+  return () => clearInterval(captureInterval);
+}, [sessionActive, cameraStatus]);
+
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -128,6 +145,46 @@ function App() {
     setSaveStatus(`Saved successfully: ${result.filename}`);
   } catch (error) {
     setSaveStatus(`Could not save photo: ${error.message}`);
+  }
+}
+async function captureAndSavePhoto() {
+  const video = videoRef.current;
+
+  if (
+    !video ||
+    video.readyState < 2 ||
+    !video.videoWidth
+  ) {
+    setCaptureError('Camera is not ready for capture.');
+    return;
+  }
+
+  if (!window.electronAPI?.savePhoto) {
+    setSaveStatus('Electron photo-saving API is unavailable.');
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    setCaptureError('Could not prepare the capture canvas.');
+    return;
+  }
+
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const imageData = canvas.toDataURL('image/jpeg', 0.92);
+
+  try {
+    const result = await window.electronAPI.savePhoto(imageData);
+    setSaveStatus(`Automatically saved: ${result.filename}`);
+    setCaptureError('');
+  } catch (error) {
+    setSaveStatus(`Automatic save failed: ${error.message}`);
   }
 }
 
@@ -273,10 +330,10 @@ function App() {
             </p>
           </div>
 
-          <button
-            className={`session-button ${sessionActive ? 'stop-button' : ''}`}
-            onClick={toggleSession}
-          >
+         <button
+              className={`session-button ${sessionActive ? 'stop-button' : ''}`}
+              onClick={toggleSession}
+              disabled={!sessionActive && cameraStatus !== 'active'}>
             {sessionActive ? 'End session' : 'Start session'}
           </button>
         </section>
