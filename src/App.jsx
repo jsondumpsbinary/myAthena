@@ -4,6 +4,7 @@ import './App.css';
 function App() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const captureBusyRef = useRef(false);
 
   const [cameraStatus, setCameraStatus] = useState('idle');
   const [cameraError, setCameraError] = useState('');
@@ -12,6 +13,7 @@ function App() {
   const [sessionActive, setSessionActive] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [saveStatus, setSaveStatus] = useState('');
+
   useEffect(() => {
     if (!sessionActive) return;
 
@@ -148,43 +150,58 @@ function App() {
   }
 }
 async function captureAndSavePhoto() {
-  const video = videoRef.current;
-
-  if (
-    !video ||
-    video.readyState < 2 ||
-    !video.videoWidth
-  ) {
-    setCaptureError('Camera is not ready for capture.');
+  if (captureBusyRef.current) {
     return;
   }
 
-  if (!window.electronAPI?.savePhoto) {
-    setSaveStatus('Electron photo-saving API is unavailable.');
-    return;
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const context = canvas.getContext('2d');
-
-  if (!context) {
-    setCaptureError('Could not prepare the capture canvas.');
-    return;
-  }
-
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const imageData = canvas.toDataURL('image/jpeg', 0.92);
+  captureBusyRef.current = true;
 
   try {
+    const video = videoRef.current;
+
+    if (
+      !video ||
+      video.readyState < 2 ||
+      !video.videoWidth
+    ) {
+      setCaptureError('Camera is not ready for capture.');
+      return;
+    }
+
+    if (!window.electronAPI?.savePhoto) {
+      setSaveStatus('Electron photo-saving API is unavailable.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      setCaptureError('Could not prepare the capture canvas.');
+      return;
+    }
+
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    const imageData = canvas.toDataURL('image/jpeg', 0.92);
+
     const result = await window.electronAPI.savePhoto(imageData);
+
     setSaveStatus(`Automatically saved: ${result.filename}`);
     setCaptureError('');
   } catch (error) {
     setSaveStatus(`Automatic save failed: ${error.message}`);
+  } finally {
+    captureBusyRef.current = false;
   }
 }
 
