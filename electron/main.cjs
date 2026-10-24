@@ -15,7 +15,11 @@ function createWindow() {
     },
   });
 
+  if (app.isPackaged) {
+  win.loadFile(path.join(app.getAppPath(), 'dist', 'index.html'));
+} else {
   win.loadURL('http://127.0.0.1:5173');
+}
 }
 
 ipcMain.handle('save-photo', async (event, imageData) => {
@@ -33,7 +37,9 @@ ipcMain.handle('save-photo', async (event, imageData) => {
 
   const photoBuffer = Buffer.from(base64Data, 'base64');
 
-  const photosDirectory = path.join(app.getAppPath(), 'photos');
+ const photosDirectory = app.isPackaged
+  ? path.join(app.getPath('userData'), 'photos')
+  : path.join(app.getAppPath(), 'photos');
 
   await fs.mkdir(photosDirectory, { recursive: true });
 
