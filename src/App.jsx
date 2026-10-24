@@ -76,22 +76,30 @@ function App() {
 
       setCameraStatus('active');
     } catch (error) {
-      setCameraStatus('error');
-      setCameraError(`Could not start camera: ${error.message}`);
-    }
+  streamRef.current?.getTracks().forEach((track) => track.stop());
+  streamRef.current = null;
+
+  setCameraStatus('error');
+  setCameraError(`Could not start camera: ${error.message}`);
+}
   }
 
   // Stop camera
   function stopCamera() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+  endSession();
 
-    streamRef.current = null;
+  streamRef.current?.getTracks().forEach((track) => track.stop());
+
+  streamRef.current = null;
+
+  if (videoRef.current) {
     videoRef.current.srcObject = null;
-
-    setCameraStatus('idle');
-    setSessionActive(false);
-    setCameraError('');
   }
+
+  setCameraStatus('idle');
+  setCameraError('');
+  setCaptureError('');
+}
 
   // Capture the current video frame
   function captureCurrentFrame() {
