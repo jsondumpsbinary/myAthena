@@ -20,7 +20,7 @@ function App() {
     if (!sessionActive) return;
 
     const timer = setInterval(() => {
-      setElapsedSeconds((seconds) => seconds + 1);
+      setElapsedSeconds((seconds) => seconds + 60);
     }, 1000);
 
     return () => clearInterval(timer);
@@ -164,8 +164,17 @@ function App() {
     setSessionActive(false);
   }
 
-  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-  const seconds = String(elapsedSeconds % 60).padStart(2, '0');
+ const hours = String(
+  Math.floor(elapsedSeconds / 3600)
+).padStart(2, '0');
+
+const minutes = String(
+  Math.floor((elapsedSeconds % 3600) / 60)
+).padStart(2, '0');
+
+const seconds = String(
+  elapsedSeconds % 60
+).padStart(2, '0');
 
   return (
     <div className="app-shell">
@@ -305,7 +314,7 @@ function App() {
           <div>
             <p className="eyebrow">SESSION TIMER</p>
             <div className="timer">
-              {minutes}:{seconds}
+              {hours}:{minutes}:{seconds}
             </div>
             <p className="timer-description">
               {sessionActive ? 'Session in progress' : 'Time elapsed'}
