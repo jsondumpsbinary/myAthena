@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
 
@@ -14,163 +15,91 @@ function App() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [saveStatus, setSaveStatus] = useState('');
 
+  // Session timer
   useEffect(() => {
     if (!sessionActive) return;
 
-    const intervalId = setInterval(() => {
+    const timer = setInterval(() => {
       setElapsedSeconds((seconds) => seconds + 1);
     }, 1000);
 
-    return () => clearInterval(intervalId);
+    return () => clearInterval(timer);
   }, [sessionActive]);
 
-
+  // Automatic photo capture every 10 seconds
   useEffect(() => {
-  if (!sessionActive) return;
+    if (!sessionActive || cameraStatus !== 'active') return;
 
-  if (cameraStatus !== 'active') {
-    setSaveStatus('Start the camera before beginning automatic capture.');
-    setSessionActive(false);
-    return;
-  }
+    const interval = setInterval(async () => {
+      if (captureBusyRef.current) return;
 
-  const captureInterval = setInterval(() => {
-    void captureAndSavePhoto();
-  }, 10_000);
+      captureBusyRef.current = true;
 
-  return () => clearInterval(captureInterval);
-}, [sessionActive, cameraStatus]);
+      try {
+        const imageData = captureCurrentFrame();
 
+        if (!imageData) return;
+
+        const result = await window.electronAPI.savePhoto(imageData);
+        setSaveStatus(`Automatically saved: ${result.filename}`);
+      } catch (error) {
+        setSaveStatus(`Automatic save failed: ${error.message}`);
+      } finally {
+        captureBusyRef.current = false;
+      }
+    }, 10_000);
+
+    return () => clearInterval(interval);
+  }, [sessionActive, cameraStatus]);
+
+  // Stop camera when the component unmounts
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
+  // Start camera
   async function startCamera() {
     setCameraError('');
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraStatus('error');
-      setCameraError('Camera access is unavailable in this environment.');
-      return;
-    }
+    setCameraStatus('loading');
 
     try {
-      setCameraStatus('loading');
-
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: {
-          facingMode: 'user',
-        },
+        video: { facingMode: 'user' },
       });
 
       streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
 
       setCameraStatus('active');
     } catch (error) {
       setCameraStatus('error');
-      setCameraError(
-        error.name === 'NotAllowedError'
-          ? 'Camera permission was denied. Allow camera access in macOS settings and try again.'
-          : error.name === 'NotFoundError'
-            ? 'No camera was found.'
-            : `Could not start the camera: ${error.message}`
-      );
+      setCameraError(`Could not start camera: ${error.message}`);
     }
   }
 
+  // Stop camera
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
 
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    streamRef.current = null;
+    videoRef.current.srcObject = null;
 
     setCameraStatus('idle');
+    setSessionActive(false);
     setCameraError('');
   }
 
-  function capturePhoto() {
-  const video = videoRef.current;
-
-  if (!video || video.readyState < 2 || !video.videoWidth) {
-    setCaptureError('Wait for the live camera preview to be ready.');
-    return;
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const context = canvas.getContext('2d');
-
-  if (!context) {
-    setCaptureError('Could not prepare the photo capture canvas.');
-    return;
-  }
-
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.92));
-  setCaptureError('');
-}
-
-
-  function toggleSession() {
-    setSessionActive((active) => !active);
-  }
-
-  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-  const seconds = String(elapsedSeconds % 60).padStart(2, '0');
-
-  async function saveCapturedPhoto() {
-  if (!capturedPhoto) return;
-
-  if (!window.electronAPI?.savePhoto) {
-    setSaveStatus('Electron photo-saving API is unavailable.');
-    return;
-  }
-
-  try {
-    setSaveStatus('Saving photo...');
-
-    const result = await window.electronAPI.savePhoto(capturedPhoto);
-
-    setSaveStatus(`Saved successfully: ${result.filename}`);
-  } catch (error) {
-    setSaveStatus(`Could not save photo: ${error.message}`);
-  }
-}
-async function captureAndSavePhoto() {
-  if (captureBusyRef.current) {
-    return;
-  }
-
-  captureBusyRef.current = true;
-
-  try {
+  // Capture the current video frame
+  function captureCurrentFrame() {
     const video = videoRef.current;
 
-    if (
-      !video ||
-      video.readyState < 2 ||
-      !video.videoWidth
-    ) {
-      setCaptureError('Camera is not ready for capture.');
-      return;
-    }
-
-    if (!window.electronAPI?.savePhoto) {
-      setSaveStatus('Electron photo-saving API is unavailable.');
-      return;
+    if (!video || video.readyState < 2 || !video.videoWidth) {
+      setCaptureError('Camera is not ready.');
+      return null;
     }
 
     const canvas = document.createElement('canvas');
@@ -180,30 +109,55 @@ async function captureAndSavePhoto() {
     const context = canvas.getContext('2d');
 
     if (!context) {
-      setCaptureError('Could not prepare the capture canvas.');
-      return;
+      setCaptureError('Could not capture photo.');
+      return null;
     }
 
-    context.drawImage(
-      video,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const imageData = canvas.toDataURL('image/jpeg', 0.92);
-
-    const result = await window.electronAPI.savePhoto(imageData);
-
-    setSaveStatus(`Automatically saved: ${result.filename}`);
     setCaptureError('');
-  } catch (error) {
-    setSaveStatus(`Automatic save failed: ${error.message}`);
-  } finally {
-    captureBusyRef.current = false;
+    return canvas.toDataURL('image/jpeg', 0.92);
   }
-}
+
+  // Capture a photo manually
+  function capturePhoto() {
+    const imageData = captureCurrentFrame();
+
+    if (imageData) {
+      setCapturedPhoto(imageData);
+    }
+  }
+
+  // Save the manually captured photo
+  async function saveCapturedPhoto() {
+    if (!capturedPhoto) return;
+
+    try {
+      setSaveStatus('Saving photo...');
+
+      const result = await window.electronAPI.savePhoto(capturedPhoto);
+
+      setSaveStatus(`Saved successfully: ${result.filename}`);
+    } catch (error) {
+      setSaveStatus(`Could not save photo: ${error.message}`);
+    }
+  }
+
+  // Start and end session
+  function startSession() {
+    if (cameraStatus !== 'active') return;
+
+    setElapsedSeconds(0);
+    setSaveStatus('');
+    setSessionActive(true);
+  }
+
+  function endSession() {
+    setSessionActive(false);
+  }
+
+  const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+  const seconds = String(elapsedSeconds % 60).padStart(2, '0');
 
   return (
     <div className="app-shell">
@@ -237,6 +191,7 @@ async function captureAndSavePhoto() {
               <h3>Camera preview</h3>
               <p>Connect your camera to view the live feed.</p>
             </div>
+
             <span className="preview-badge">
               {cameraStatus === 'active' ? 'LIVE' : 'CAMERA'}
             </span>
@@ -245,7 +200,9 @@ async function captureAndSavePhoto() {
           <div className="camera-preview">
             <video
               ref={videoRef}
-              className={`camera-video ${cameraStatus === 'active' ? 'visible' : ''}`}
+              className={`camera-video ${
+                cameraStatus === 'active' ? 'visible' : ''
+              }`}
               autoPlay
               muted
               playsInline
@@ -284,56 +241,56 @@ async function captureAndSavePhoto() {
               {cameraStatus === 'active' ? 'Stop camera' : 'Start camera'}
             </button>
           </div>
-                <div className="capture-section">
-  <button
-    className="session-button"
-    onClick={capturePhoto}
-    disabled={cameraStatus !== 'active'}
-  >
-    Capture photo
-  </button>
 
-  {captureError && (
-    <p className="capture-error">{captureError}</p>
-  )}
+          <div className="capture-section">
+            <button
+              className="session-button"
+              onClick={capturePhoto}
+              disabled={cameraStatus !== 'active'}
+            >
+              Capture photo
+            </button>
 
-  {capturedPhoto && (
-  <div className="captured-photo">
-    <h3>Captured photo</h3>
+            {captureError && (
+              <p className="capture-error">{captureError}</p>
+            )}
 
-    <img src={capturedPhoto} alt="Captured camera snapshot" />
+            {capturedPhoto && (
+              <div className="captured-photo">
+                <h3>Captured photo</h3>
 
-    <a
-      href={capturedPhoto}
-      download={`myathena-photo-${Date.now()}.jpg`}
-      className="download-link"
-    >
-      Download photo
-    </a>
+                <img src={capturedPhoto} alt="Captured camera snapshot" />
 
-    <button
-      className="secondary-button"
-      onClick={saveCapturedPhoto}
-    >
-      Save to myAthena folder
-    </button>
+                <a
+                  href={capturedPhoto}
+                  download={`myathena-photo-${Date.now()}.jpg`}
+                  className="download-link"
+                >
+                  Download photo
+                </a>
 
-    {saveStatus && <p>{saveStatus}</p>}
+                <button
+                  className="secondary-button"
+                  onClick={saveCapturedPhoto}
+                >
+                  Save to myAthena folder
+                </button>
 
-    <button
-      className="secondary-button"
-      onClick={() => {
-        setCapturedPhoto('');
-        setSaveStatus('');
-        setCaptureError('');
-      }}
-    >
-      Clear photo
-    </button>
-  </div>
-)}
-</div>
-          
+                {saveStatus && <p>{saveStatus}</p>}
+
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setCapturedPhoto('');
+                    setSaveStatus('');
+                    setCaptureError('');
+                  }}
+                >
+                  Clear photo
+                </button>
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="session-card">
@@ -347,10 +304,13 @@ async function captureAndSavePhoto() {
             </p>
           </div>
 
-         <button
-              className={`session-button ${sessionActive ? 'stop-button' : ''}`}
-              onClick={toggleSession}
-              disabled={!sessionActive && cameraStatus !== 'active'}>
+          <button
+            className={`session-button ${
+              sessionActive ? 'stop-button' : ''
+            }`}
+            onClick={sessionActive ? endSession : startSession}
+            disabled={!sessionActive && cameraStatus !== 'active'}
+          >
             {sessionActive ? 'End session' : 'Start session'}
           </button>
         </section>
