@@ -243,9 +243,6 @@ const seconds = String(
             <div className="timer">
               {hours}:{minutes}:{seconds}
             </div>
-            {/* <p className="timer-description">
-              {sessionActive ? 'Session in progress' : 'Time elapsed'}
-            </p> */}
           </div>
 
           <button
@@ -255,7 +252,7 @@ const seconds = String(
             onClick={sessionActive ? endSession : startSession}
             disabled={!sessionActive && cameraStatus !== 'active'}
           >
-            {sessionActive ? 'End session' : 'Start session'}
+            {sessionActive ? 'End Test' : 'Start Test'}
           </button>
           {saveStatus && <p>{saveStatus}</p>}
         </section>
