@@ -264,8 +264,6 @@ const seconds = String(
               >
                 {sessionActive ? 'End Test' : 'Start Test'}
               </button>
-
-              {saveStatus && <p>{saveStatus}</p>}
           </section>
 
         <footer className="app-footer">
