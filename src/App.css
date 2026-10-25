@@ -313,3 +313,54 @@
     flex-direction: column;
   }
 }
+
+
+.capture-section {
+  margin-top: 18px;
+}
+
+.session-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.capture-error {
+  color: #b93434;
+  font-size: 13px;
+}
+
+.captured-photo {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid #e6e7ef;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.captured-photo h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+
+.captured-photo img {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #111;
+}
+
+.download-link {
+  display: inline-block;
+  margin-top: 14px;
+  color: #4548bd;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.download-link:hover {
+  text-decoration: underline;
+}

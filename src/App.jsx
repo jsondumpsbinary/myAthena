@@ -11,9 +11,10 @@ function App() {
   const [cameraError, setCameraError] = useState('');
   const [captureError, setCaptureError] = useState('');
   const [sessionActive, setSessionActive] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(5);
+  const [elapsedSeconds, setElapsedSeconds] = useState(14*60);
   const [saveStatus, setSaveStatus] = useState('');
   const [testReady, setTestReady] = useState(false);
+  const [fullScreenApproved, setFullScreenApproved] = useState(false);
 
   // Session timer
   useEffect(() => {
@@ -144,6 +145,17 @@ function App() {
     setSessionActive(false);
   }
 
+  async function enterFullScreen() {
+    try {
+      const approved = await window.electronAPI.requestFullScreen();
+      if (approved === true) {
+        setFullScreenApproved(true);
+      }
+    } catch (error) {
+      console.error('Full-screen request failed:', error);
+    }
+  }
+
  const hours = String(
   Math.floor(elapsedSeconds / 3600)
 ).padStart(2, '0');
@@ -253,16 +265,28 @@ const seconds = String(
               </div>
 
               <button
+                type="button"
                 className={`session-button ${
                   sessionActive ? 'stop-button' : ''
                 }`}
-                onClick={sessionActive ? endSession : startSession}
-               disabled={
-                        !sessionActive &&
-                        (cameraStatus !== 'active' || !testReady)
+                onClick={
+                  sessionActive
+                    ? endSession
+                    : fullScreenApproved
+                      ? startSession
+                      : enterFullScreen
+                }
+                disabled={
+                  fullScreenApproved &&
+                  !sessionActive &&
+                  (elapsedSeconds > 0 || cameraStatus !== 'active')
                 }
               >
-                {sessionActive ? 'End Test' : 'Start Test'}
+                {sessionActive
+                  ? 'End Test'
+                  : fullScreenApproved
+                    ? 'Start Test'
+                    : 'Enter Full Screen'}
               </button>
           </section>
 

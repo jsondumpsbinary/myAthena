@@ -1,7 +1,5 @@
 node_modules/
 dist/
-out/
-.env
-.env.*
-!.env.example
+release/
+photos/
 .DS_Store
