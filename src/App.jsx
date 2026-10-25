@@ -11,12 +11,16 @@ function App() {
   const [cameraError, setCameraError] = useState('');
   const [captureError, setCaptureError] = useState('');
   const [sessionActive, setSessionActive] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(14*60);
+  const [elapsedSeconds, setElapsedSeconds] = useState(5);
   const [saveStatus, setSaveStatus] = useState('');
+  const [testReady, setTestReady] = useState(false);
 
   // Session timer
   useEffect(() => {
-  if (elapsedSeconds <= 0) return;
+  if (elapsedSeconds <= 0) {
+    setTestReady(true);
+    return;
+  }
 
   const timer = setInterval(() => {
     setElapsedSeconds((seconds) => Math.max(seconds - 1, 0));
@@ -238,24 +242,28 @@ const seconds = String(
         </section>
 
         <section className="session-card">
-          <div>
-            <p className="eyebrow">Test Starts In</p>
-            <div className="timer">
-              {hours}:{minutes}:{seconds}
-            </div>
-          </div>
+              <div>
+                <p className="eyebrow">
+                  {testReady ? 'Test is Ready' : 'Test Starts In'}
+                </p>
 
-          <button
-            className={`session-button ${
-              sessionActive ? 'stop-button' : ''
-            }`}
-            onClick={sessionActive ? endSession : startSession}
-            disabled={!sessionActive && cameraStatus !== 'active'}
-          >
-            {sessionActive ? 'End Test' : 'Start Test'}
-          </button>
-          {saveStatus && <p>{saveStatus}</p>}
-        </section>
+                <div className="timer">
+                  {hours}:{minutes}:{seconds}
+                </div>
+              </div>
+
+              <button
+                className={`session-button ${
+                  sessionActive ? 'stop-button' : ''
+                }`}
+                onClick={sessionActive ? endSession : startSession}
+                disabled={!sessionActive && cameraStatus !== 'active'}
+              >
+                {sessionActive ? 'End Test' : 'Start Test'}
+              </button>
+
+              {saveStatus && <p>{saveStatus}</p>}
+          </section>
 
         <footer className="app-footer">
           myAthena <span>·</span> Development build
