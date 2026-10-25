@@ -11,19 +11,19 @@ function App() {
   const [cameraError, setCameraError] = useState('');
   const [captureError, setCaptureError] = useState('');
   const [sessionActive, setSessionActive] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(14*60);
   const [saveStatus, setSaveStatus] = useState('');
 
   // Session timer
   useEffect(() => {
-    if (!sessionActive) return;
+  if (elapsedSeconds <= 0) return;
 
-    const timer = setInterval(() => {
-      setElapsedSeconds((seconds) => seconds + 60);
-    }, 1000);
+  const timer = setInterval(() => {
+    setElapsedSeconds((seconds) => Math.max(seconds - 1, 0));
+  }, 1000);
 
-    return () => clearInterval(timer);
-  }, [sessionActive]);
+  return () => clearInterval(timer);
+}, [elapsedSeconds]);
 
   // Automatic photo capture every 10 seconds
   useEffect(() => {
