@@ -44,9 +44,9 @@ function App() {
         if (!imageData) return;
 
         const result = await window.electronAPI.savePhoto(imageData);
-        setSaveStatus(`Automatically saved: ${result.filename}`);
+        console.log('Automatically saved:', result.filename);
       } catch (error) {
-        setSaveStatus(`Automatic save failed: ${error.message}`);
+        console.log(`Automatic save failed: ${error.message}`);
       } finally {
         captureBusyRef.current = false;
       }
