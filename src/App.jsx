@@ -239,7 +239,7 @@ const seconds = String(
 
         <section className="session-card">
           <div>
-            <p className="eyebrow">SESSION TIMER</p>
+            <p className="eyebrow">Test Starts In</p>
             <div className="timer">
               {hours}:{minutes}:{seconds}
             </div>
