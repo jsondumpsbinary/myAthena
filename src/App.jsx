@@ -257,7 +257,10 @@ const seconds = String(
                   sessionActive ? 'stop-button' : ''
                 }`}
                 onClick={sessionActive ? endSession : startSession}
-                disabled={!sessionActive && cameraStatus !== 'active'}
+               disabled={
+                        !sessionActive &&
+                        (cameraStatus !== 'active' || !testReady)
+                }
               >
                 {sessionActive ? 'End Test' : 'Start Test'}
               </button>
